@@ -84,6 +84,7 @@
               <button class="tool-button" data-tool="rect" title="Rectangle">□<small>Rectangle</small></button>
               <button class="tool-button" data-tool="circle" title="Cercle">◯<small>Cercle</small></button>
               <button class="tool-button" data-tool="fillrect" title="Rectangle plein">▰<small>Plein</small></button>
+              <button class="tool-button" data-tool="fill" title="Remplir une zone">▧<small>Remplir</small></button>
             </div>
             <div class="tool-options">
               <div class="option-row"><label for="brush-size">Taille <strong id="size-value">8 px</strong></label><input id="brush-size" type="range" min="1" max="40" value="8"></div>
@@ -107,6 +108,19 @@
     </section>
   </main>
 
+  <section id="results-screen" class="results-screen hidden" aria-live="polite">
+    <div class="results-card">
+      <div class="eyebrow"><span class="eyebrow-line"></span> FIN DU ROUND</div>
+      <h2>Le musée est ouvert<span>.</span></h2>
+      <p class="results-theme">Thème : <strong id="results-theme">—</strong></p>
+      <div class="results-drawings">
+        <article class="result-drawing"><div><strong id="results-self-name">Ton dessin</strong><small>Ta création</small></div><img id="results-self-image" alt="Ton dessin du round"></article>
+        <article class="result-drawing"><div><strong id="results-opponent-name">Dessin de ton ami</strong><small>La création adverse</small></div><img id="results-opponent-image" alt="Dessin de ton ami"></article>
+      </div>
+      <p id="results-status" class="results-status">Vos deux œuvres sont réunies !</p>
+      <div class="results-actions"><button id="results-next" class="primary-button hidden">Thème suivant <span>↗</span></button><button id="results-close" class="secondary-button">Retour à l’atelier</button></div>
+    </div>
+  </section>
   <div id="toast" class="toast" role="status"></div>
   <dialog id="help-dialog" class="help-dialog"><button id="close-help" class="dialog-close">×</button><span class="help-icon">✎</span><h2>Comment ça marche ?</h2><ol><li>Crée une room et partage le code + mot de passe à ton ami.</li><li>Quand les deux joueurs sont connectés, l’hôte lance le round.</li><li>Vous avez 60 secondes pour dessiner le thème affiché.</li><li>À la fin, vos dessins sont révélés. L’hôte peut lancer le thème suivant.</li></ol><p>Astuce : les touches et outils sont pensés pour souris, stylet et écran tactile.</p><button id="help-ok" class="primary-button">Compris !</button></dialog>
   <script src="js/app.js"></script>

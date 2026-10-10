@@ -21,7 +21,7 @@
     opponentName: "", connected: false, round: 0, theme: "", seconds: 60, deadline: 0, interval: null,
     running: false, ended: false, voted: null, usedThemes: [], layers: [], activeLayer: 0,
     tool: "brush", color: "#30323b", size: 8, opacity: 1, drawing: false, startPoint: null,
-    snapshots: [], redo: [], lastPoint: null, pendingGuest: null, shapePreview: null, layerVisible: [true,true,true]
+    snapshots: [], redo: [], lastPoint: null, pendingGuest: null, shapePreview: null, layerVisible: [true,true,true], ownImage: "", opponentImage: "", roundEnding: false
   };
   const layerNames = ["Croquis", "Couleurs", "Détails"];
   const palette = ["#30323b","#ef7d68","#f3bd58","#6caa91","#6f91d8","#b28ad4","#f1a9c3","#ffffff"];
@@ -152,7 +152,7 @@
         drawRemote(data);
         if (state.conn && state.conn.open) state.conn.send({type:"draw", ...data, relay:true});
       } else if (data.type === "snapshot") {
-        showOpponentImage(data.image);
+        if(!data.round||data.round===state.round){state.opponentImage=data.image;showOpponentImage(data.image);if(state.ended)updateResultsScreen();}
       } else if (data.type === "vote") {
         $("#vote-status").textContent = state.opponentName + " a voté !";
       } else if (data.type === "guest-leave") handleDisconnect("Ton ami a quitté la room.");
@@ -179,7 +179,7 @@
     else if (data.type === "round-start") beginRound(data, false);
     else if (data.type === "round-end") endRound(data, false);
     else if (data.type === "new-round") newRoundGuest(data);
-    else if (data.type === "snapshot") showOpponentImage(data.image);
+    else if (data.type === "snapshot") {if(!data.round||data.round===state.round){state.opponentImage=data.image;showOpponentImage(data.image);if(state.ended)updateResultsScreen();}}
     else if (data.type === "vote-result") $("#vote-status").textContent = data.message;
     else if (data.type === "host-left") handleDisconnect("L’hôte a quitté la room.");
   }
@@ -238,6 +238,15 @@
     const r=canvas.getBoundingClientRect();
     return {x:(e.clientX-r.left),y:(e.clientY-r.top),nx:(e.clientX-r.left)/r.width,ny:(e.clientY-r.top)/r.height};
   }
+  function floodFill(layer, point, color, opacity=1) {
+    const c=layer.ctx, cv=layer.canvas, px=Math.max(0,Math.min(cv.width-1,Math.floor(point.x*devicePixelRatio))), py=Math.max(0,Math.min(cv.height-1,Math.floor(point.y*devicePixelRatio)));
+    const image=c.getImageData(0,0,cv.width,cv.height), data=image.data, start=(py*cv.width+px)*4, target=[data[start],data[start+1],data[start+2],data[start+3]], hex=color.replace('#',''), replacement=[parseInt(hex.slice(0,2),16),parseInt(hex.slice(2,4),16),parseInt(hex.slice(4,6),16),Math.round(opacity*255)];
+    if(target.every((v,i)=>v===replacement[i]))return;
+    const close=i=>Math.abs(data[i]-target[0])<24&&Math.abs(data[i+1]-target[1])<24&&Math.abs(data[i+2]-target[2])<24&&Math.abs(data[i+3]-target[3])<24;
+    const stack=[[px,py]], seen=new Uint8Array(cv.width*cv.height);let changed=0;
+    while(stack.length&&changed<900000){const [x,y]=stack.pop();if(x<0||y<0||x>=cv.width||y>=cv.height)continue;const pos=y*cv.width+x;if(seen[pos])continue;seen[pos]=1;const i=pos*4;if(!close(i))continue;data[i]=replacement[0];data[i+1]=replacement[1];data[i+2]=replacement[2];data[i+3]=replacement[3];changed++;stack.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);}
+    c.putImageData(image,0,0);renderComposite();
+  }
   function paintSegment(layer, from, to, broadcast=true) {
     const c=layer.ctx; const width=canvas.clientWidth, height=canvas.clientHeight;
     c.save(); c.globalAlpha=state.opacity; c.lineCap="round"; c.lineJoin="round";
@@ -270,6 +279,7 @@
     // Remote strokes go to the opponent preview, never onto the local drawing.
     const w=opponentCanvas.width/devicePixelRatio,h=opponentCanvas.height/devicePixelRatio;
     const from={x:d.from.x*w,y:d.from.y*h},to={x:d.to.x*w,y:d.to.y*h};
+    if(d.tool==="fill"){opponentCtx.save();opponentCtx.globalAlpha=Number(d.opacity??1);opponentCtx.fillStyle=d.color||"#30323b";opponentCtx.fillRect(0,0,opponentCanvas.width,opponentCanvas.height);opponentCtx.restore();return;}
     const c=opponentCtx;c.save();c.globalAlpha=Number(d.opacity ?? 1);c.lineCap="round";c.lineJoin="round";
     c.lineWidth=Number(d.size||8);c.strokeStyle=d.tool==="eraser"?"#ffffff":(d.color||"#30323b");c.fillStyle=d.color||"#30323b";
     if(d.tool==="eraser")c.globalCompositeOperation="destination-out";
@@ -282,7 +292,9 @@
   canvas.addEventListener("pointerdown",e=>{
     if(!state.running || state.ended) return;
     e.preventDefault(); canvas.setPointerCapture(e.pointerId);
-    const p=pointFromEvent(e); state.drawing=true;state.startPoint=p;state.lastPoint=p;saveHistory();
+    const p=pointFromEvent(e);
+    if(state.tool==="fill"){saveHistory();floodFill(currentLayer(),p,state.color,state.opacity);send({type:"draw",layer:state.activeLayer,tool:"fill",color:state.color,size:state.size,opacity:state.opacity,from:{x:p.nx,y:p.ny},to:{x:p.nx,y:p.ny}});return;}
+    state.drawing=true;state.startPoint=p;state.lastPoint=p;saveHistory();
     if(state.tool==="brush"||state.tool==="eraser") paintSegment(currentLayer(),p,{...p,x:p.x+.01,y:p.y+.01},true);
   });
   canvas.addEventListener("pointermove",e=>{
@@ -327,8 +339,17 @@
     const theme=remaining.length?remaining[Math.floor(Math.random()*remaining.length)]:themes[Math.floor(Math.random()*themes.length)];
     state.usedThemes.push(theme);return theme;
   }
+  function updateResultsScreen(){
+    $("#results-theme").textContent=state.theme||"—";$("#results-self-name").textContent=state.name||"Ton dessin";$("#results-opponent-name").textContent=state.opponentName||"Dessin de ton ami";
+    if(state.ownImage)$("#results-self-image").src=state.ownImage;if(state.opponentImage)$("#results-opponent-image").src=state.opponentImage;
+    $("#results-next").classList.toggle("hidden",state.role!=="host"||!state.connected);$("#results-status").textContent=state.opponentImage?"Vos deux œuvres sont réunies ! À vous de voter pour votre préférée.":"Ton dessin est prêt. On attend celui de ton ami…";
+  }
+  function showResultsScreen(){updateResultsScreen();$("#results-screen").classList.remove("hidden");}
+  $("#results-close").addEventListener("click",()=>$("#results-screen").classList.add("hidden"));
+  $("#results-next").addEventListener("click",()=>{$("#results-screen").classList.add("hidden");$("#next-round").click();});
+
   function beginRound(data, isHost=true) {
-    state.round=data.round;state.theme=data.theme;state.seconds=60;state.running=true;state.ended=false;state.voted=null;
+    state.round=data.round;state.theme=data.theme;state.seconds=60;state.running=true;state.ended=false;state.voted=null;state.ownImage="";state.opponentImage="";state.roundEnding=false;$("#results-screen").classList.add("hidden");$("#results-self-image").removeAttribute("src");$("#results-opponent-image").removeAttribute("src");
     $("#round-number").textContent=String(state.round).padStart(2,"0");$("#theme-name").textContent=state.theme;
     $("#canvas-overlay").classList.add("hidden");$("#opponent-placeholder").classList.remove("hidden");$("#reveal-actions").classList.add("hidden");
     state.layers.forEach(l=>{l.ctx.clearRect(0,0,l.canvas.width/devicePixelRatio,l.canvas.height/devicePixelRatio);l.history=[];l.redo=[];});
@@ -350,11 +371,12 @@
     state.running=false;state.ended=true;clearInterval(state.interval);state.seconds=0;$("#timer").textContent="0";
     $("#canvas-overlay").classList.add("hidden");$("#round-status").textContent="Temps écoulé ! Regardez vos chefs-d’œuvre.";
     $("#opponent-progress").textContent="Terminé";$("#reveal-actions").classList.remove("hidden");
-    const img=makeCompositeDataURL();send({type:"snapshot",image:img,round:state.round});
+    const img=makeCompositeDataURL();state.ownImage=img;send({type:"snapshot",image:img,round:state.round});
     $("#start-round").classList.add("hidden");
     if(state.role==="host")$("#next-round").classList.remove("hidden");
     if(isHost)send({type:"round-end",round:state.round});
-    if(data&&data.image)showOpponentImage(data.image);
+    if(data&&data.image){state.opponentImage=data.image;showOpponentImage(data.image);}
+    showResultsScreen();
   }
   function makeCompositeDataURL() {
     const out=document.createElement("canvas");out.width=canvas.width;out.height=canvas.height;const o=out.getContext("2d");o.fillStyle="#fff";o.fillRect(0,0,out.width,out.height);
