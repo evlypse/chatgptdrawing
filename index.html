@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f2ec">
+  <title>Petit Atelier — Dessine à deux</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Petit Atelier, accueil">
+      <span class="brand-mark"><span></span><span></span><span></span></span>
+      <span>petit<span class="brand-light">atelier</span></span>
+    </a>
+    <div class="top-right"><span class="live-dot"></span><span id="connection-label">Prêt à créer</span><button id="help-btn" class="icon-button" title="Aide">?</button></div>
+  </header>
+
+  <main>
+    <section id="lobby" class="lobby">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="eyebrow-line"></span> LE PETIT DÉFI CRÉATIF</div>
+        <h1>Deux artistes.<br><span>Une minute.</span></h1>
+        <p class="hero-sub">Un thème surprise, une toile blanche et 60 secondes pour faire de votre mieux. Pas besoin d’être un pro — juste de s’amuser.</p>
+        <div class="hero-tags"><span>✳️ Thèmes surprise</span><span>◷ 60 secondes</span><span>♡ Entre amis</span></div>
+      </div>
+      <div class="lobby-card">
+        <div class="card-top"><div><span class="tiny-label">ON SE RETROUVE OÙ ?</span><h2>Rejoindre l’atelier</h2></div><div class="mini-illustration">✎</div></div>
+        <div class="tabs"><button class="tab active" data-tab="create">Créer une room</button><button class="tab" data-tab="join">Rejoindre</button></div>
+        <form id="room-form">
+          <label for="player-name">Ton pseudo</label>
+          <input id="player-name" maxlength="18" placeholder="Ex. : Mochi" value="Artiste" required>
+          <div id="create-fields">
+            <label for="create-password">Mot de passe de la room</label>
+            <input id="create-password" type="password" minlength="1" maxlength="40" placeholder="Un petit mot secret" required>
+            <p class="field-note">Un code de room sera créé automatiquement.</p>
+          </div>
+          <div id="join-fields" class="hidden">
+            <label for="room-code">Code de la room</label>
+            <input id="room-code" maxlength="6" placeholder="Ex. : LUNE42" autocomplete="off">
+            <label for="join-password">Mot de passe</label>
+            <input id="join-password" type="password" maxlength="40" placeholder="Le mot secret de ton ami">
+          </div>
+          <button id="room-submit" class="primary-button" type="submit">Créer mon atelier <span>↗</span></button>
+          <p id="lobby-status" class="status-message" role="status"></p>
+        </form>
+        <div class="privacy-note"><span>🔒</span> Jusqu’à 2 joueurs · Room privée par code</div>
+      </div>
+      <div class="hero-decoration decor-star">✳</div><div class="hero-decoration decor-scribble">〰</div>
+    </section>
+
+    <section id="game" class="game hidden">
+      <div class="game-heading">
+        <div><div class="eyebrow"><span class="eyebrow-line"></span> VOTRE PETIT ATELIER</div><h1>À vos crayons<span class="heading-period">.</span></h1></div>
+        <div class="room-chip"><span class="live-dot"></span><div><small>CODE DE LA ROOM</small><strong id="room-code-display">—</strong></div><button id="copy-code" title="Copier le code">⧉</button></div>
+      </div>
+      <div class="round-banner">
+        <div class="round-index"><span id="round-number">01</span><small>ROUND</small></div>
+        <div class="theme-block"><span class="tiny-label">THÈME DU ROUND</span><h2 id="theme-name">En attente de l’autre artiste…</h2></div>
+        <div class="timer-wrap"><div id="timer-ring" class="timer-ring"><span id="timer">60</span></div><small>SECONDES</small></div>
+        <div class="round-actions"><button id="start-round" class="primary-button compact">Lancer le round <span>→</span></button><button id="next-round" class="secondary-button hidden">Thème suivant ↗</button><p id="round-status">Prêt quand vous l’êtes.</p></div>
+      </div>
+
+      <div class="players-row">
+        <div class="player-label"><span class="avatar avatar-peach">✿</span><span><strong id="self-name">Toi</strong><small>Ta toile</small></span><span class="you-badge">TOI</span></div>
+        <div class="vs-label">VS</div>
+        <div class="player-label opponent"><span class="avatar avatar-blue">✦</span><span><strong id="opponent-name">En attente…</strong><small id="opponent-state">Pas encore connecté</small></span><span id="opponent-dot" class="player-dot"></span></div>
+      </div>
+
+      <div class="studio-grid">
+        <section class="drawing-panel">
+          <div class="canvas-top"><div><span class="tiny-label">TA CRÉATION</span><span class="canvas-hint">Laisse parler ton imagination.</span></div><div class="canvas-actions"><button id="undo-btn" class="tool-icon" title="Annuler">↶</button><button id="redo-btn" class="tool-icon" title="Rétablir">↷</button><button id="clear-btn" class="tool-icon" title="Effacer la couche">⌫</button><button id="download-btn" class="tool-icon" title="Télécharger le dessin">↓</button></div></div>
+          <div id="canvas-wrap" class="canvas-wrap"><canvas id="drawing-canvas" aria-label="Ta zone de dessin"></canvas><div id="canvas-overlay" class="canvas-overlay"><span>✳</span><strong>Le round n’a pas commencé</strong><small>Le thème apparaîtra juste ici.</small></div></div>
+          <div class="toolbar">
+            <div class="tool-group drawing-tools">
+              <button class="tool-button selected" data-tool="brush" title="Pinceau">✎<small>Pinceau</small></button>
+              <button class="tool-button" data-tool="eraser" title="Gomme">◩<small>Gomme</small></button>
+              <button class="tool-button" data-tool="line" title="Ligne">╱<small>Ligne</small></button>
+              <button class="tool-button" data-tool="rect" title="Rectangle">□<small>Rectangle</small></button>
+              <button class="tool-button" data-tool="circle" title="Cercle">◯<small>Cercle</small></button>
+              <button class="tool-button" data-tool="fillrect" title="Rectangle plein">▰<small>Plein</small></button>
+            </div>
+            <div class="tool-options">
+              <div class="option-row"><label for="brush-size">Taille <strong id="size-value">8 px</strong></label><input id="brush-size" type="range" min="1" max="40" value="8"></div>
+              <div class="option-row"><label for="brush-opacity">Opacité <strong id="opacity-value">100%</strong></label><input id="brush-opacity" type="range" min="5" max="100" value="100"></div>
+              <div class="color-row"><span>Couleur</span><div class="swatches" id="swatches">
+                <button style="--swatch:#30323b" data-color="#30323b" class="swatch active" aria-label="Charbon"></button><button style="--swatch:#ef7d68" data-color="#ef7d68" class="swatch" aria-label="Corail"></button><button style="--swatch:#f3bd58" data-color="#f3bd58" class="swatch" aria-label="Jaune"></button><button style="--swatch:#6caa91" data-color="#6caa91" class="swatch" aria-label="Vert"></button><button style="--swatch:#6f91d8" data-color="#6f91d8" class="swatch" aria-label="Bleu"></button><button style="--swatch:#b28ad4" data-color="#b28ad4" class="swatch" aria-label="Violet"></button><button style="--swatch:#f1a9c3" data-color="#f1a9c3" class="swatch" aria-label="Rose"></button><button style="--swatch:#fff" data-color="#ffffff" class="swatch swatch-white" aria-label="Blanc"></button><input id="custom-color" type="color" value="#30323b" title="Couleur personnalisée"></div></div>
+            </div>
+          </div>
+          <div class="layers-bar"><div class="layers-title"><span class="tiny-label">CALQUES</span><small>3 couches indépendantes</small></div><div class="layer-buttons"><button class="layer-button active" data-layer="0"><span>▤</span> Croquis</button><button class="layer-button" data-layer="1"><span>▤</span> Couleurs</button><button class="layer-button" data-layer="2"><span>▤</span> Détails</button></div><button id="layer-visible" class="tool-icon" title="Afficher/masquer le calque">◉</button></div>
+        </section>
+
+        <aside class="opponent-panel">
+          <div class="opponent-head"><div><span class="tiny-label">EN FACE DE TOI</span><h3>La toile adverse</h3></div><span class="live-pill"><i></i> LIVE</span></div>
+          <div class="opponent-canvas-wrap"><canvas id="opponent-canvas"></canvas><div id="opponent-placeholder" class="opponent-placeholder"><span>✿</span><strong>La magie se prépare…</strong><small>Le dessin apparaîtra ici à la fin du round.</small></div></div>
+          <div class="opponent-foot"><span class="mini-avatar">✦</span><span id="opponent-foot-name">Ton ami</span><span id="opponent-progress" class="progress-label">En attente</span></div>
+          <div class="friendly-tip"><span>☼</span><p><strong>Petit conseil</strong>Pas besoin d’être parfait. Les dessins les plus drôles gagnent souvent les meilleurs souvenirs.</p></div>
+          <div id="reveal-actions" class="reveal-actions hidden"><p>À vous de choisir votre préféré !</p><div><button id="vote-self" class="vote-button">♡ Mon dessin</button><button id="vote-opponent" class="vote-button">♡ Le sien</button></div><small id="vote-status"></small></div>
+        </aside>
+      </div>
+      <div class="bottom-bar"><span>✳ <strong>Petit Atelier</strong> — fait pour dessiner ensemble.</span><button id="leave-room">Quitter la room ↗</button></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status"></div>
+  <dialog id="help-dialog" class="help-dialog"><button id="close-help" class="dialog-close">×</button><span class="help-icon">✎</span><h2>Comment ça marche ?</h2><ol><li>Crée une room et partage le code + mot de passe à ton ami.</li><li>Quand les deux joueurs sont connectés, l’hôte lance le round.</li><li>Vous avez 60 secondes pour dessiner le thème affiché.</li><li>À la fin, vos dessins sont révélés. L’hôte peut lancer le thème suivant.</li></ol><p>Astuce : les touches et outils sont pensés pour souris, stylet et écran tactile.</p><button id="help-ok" class="primary-button">Compris !</button></dialog>
+  <script src="js/app.js"></script>
+</body>
+</html>
